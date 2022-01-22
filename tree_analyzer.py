@@ -227,6 +227,8 @@ def tree_analyzer_flow(fasta,tree_topology_str):
     # Load a tree and link it to an alignment.
     tree_topolo_str = "((((((M03592-154-000000000-JCY9V-1-2114-26424-16841:0.0558811845,(M03592-154-000000000-JCY9V-1-2108-9799-13897:0.0104575587,M03592-154-000000000-JCY9V-1-2117-9143-9891:0.0000000100):0.0209073238):0.0000008340,M03592-154-000000000-JCY9V-1-2105-2262-11199:0.0000000100):0.0313860135,M03592-154-000000000-JCY9V-1-1115-19386-20227:0.0104092512):0.0527013194,M03592-154-000000000-JCY9V-1-2108-23373-15593:0.0670429058):0.0103785606,M03592-154-000000000-JCY9V-1-2116-13304-13947:0.0000000100):0.1229925141,615860_GERM:0.0000100000);"
     t = PhyloTree(tree_topology_str, alignment=fasta, alg_format="fasta")
+	#list to hold all sequence ID's
+    sequence_id_list = []
 ################################################################################
     one_sequence_flag = 0
     #Check if we have 1 actual sequence in the clone to handle the sequence multiplication in igphyml flow.
@@ -265,6 +267,7 @@ def tree_analyzer_flow(fasta,tree_topology_str):
                 name_len = len(node.name)
                 if (node.name[name_len-2:] != "_1"):
                     sequences_list.append(node.sequence)
+                    sequence_id_list.append(node.name)
 ################################################################################
     #Handle the germline CDR3 consensus:
     germline_sequence_with_cdr3 = cdr3_consensus_calc(germline_sequence,sequences_list)
@@ -343,40 +346,34 @@ def tree_analyzer_flow(fasta,tree_topology_str):
     omega_closest = synonymous_mutation_ratio_per_seq_calc(germline_sequence_with_cdr3, min_distance_sequence)
 ################################################################################
    #Print Results:
-    print("---------Tree Analyzer Results---------")
-    print("Number of Leafs = ",count_leafs)
-    print("Max Mutations Distance Any Sequence ID is ",max_distance_seq_name)
-    print("Max Mutations Distance Any Sequence from Germline is ",max_distance_mutations)
-    print("Min Mutations Distance Any Sequence ID is ",min_distance_seq_name)
-    print("Min Mutations Distance Any Sequence from Germline is ",min_distance_mutations)
-    print("Max Mutations Distance BTW leaves is seqA ID ",max_distance_seq_name_leafs_a, " seqB ID ",max_distance_seq_name_leafs_b)
-    print("Max Mutations Distance BTW leaves is ",max_distance_mutations_leafs)
-    print("Min Mutations Distance BTW leaves is seqA ID ",min_distance_seq_name_leafs_a, " seqB ID ",min_distance_seq_name_leafs_b)
-    print("Min Mutations Distance BTW leaves is ",min_distance_mutations_leafs)
-    print("Number of synonymous mutations is ",count_synonymous)
-    print("Number of not synonymous mutations is ",count_not_synonymous)
-    print("Max Number of synonymous mutations in sequence is ",max_synonymous_mutations_in_sequence)
-    print("Farthest sequence omega ratio is ", omega_farthest)
-    print("Closest sequence omega ratio is ", omega_closest)
+    #print("---------Tree Analyzer Results---------")
+    #print("Number of Leafs = ",count_leafs)
+    #print("Max Mutations Distance Any Sequence ID is ",max_distance_seq_name)
+    #print("Max Mutations Distance Any Sequence from Germline is ",max_distance_mutations)
+    #print("Min Mutations Distance Any Sequence ID is ",min_distance_seq_name)
+    #print("Min Mutations Distance Any Sequence from Germline is ",min_distance_mutations)
+    #print("Max Mutations Distance BTW leaves is seqA ID ",max_distance_seq_name_leafs_a, " seqB ID ",max_distance_seq_name_leafs_b)
+    #print("Max Mutations Distance BTW leaves is ",max_distance_mutations_leafs)
+    #print("Min Mutations Distance BTW leaves is seqA ID ",min_distance_seq_name_leafs_a, " seqB ID ",min_distance_seq_name_leafs_b)
+    #print("Min Mutations Distance BTW leaves is ",min_distance_mutations_leafs)
+    #print("Number of synonymous mutations is ",count_synonymous)
+    #print("Number of not synonymous mutations is ",count_not_synonymous)
+    #print("Max Number of synonymous mutations in sequence is ",max_synonymous_mutations_in_sequence)
+    #print("Farthest sequence omega ratio is ", omega_farthest)
+    #print("Closest sequence omega ratio is ", omega_closest)
 ################################################################################
-#test analyzer
-#fasta = """
-#    >M03592-154-000000000-JCY9V-1-2117-9143-9891
-#    NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNACTCACCTTCAGTAGTTATATACACTGGGTCCGCCAGGCTCCAGGCAAGGGGCNGGAGTNGGTGGCAGTCATATCACATGATGGAAACAATAAATACTACGCAGNCNCCGTGAAGGGCCGATTCACCATCTCCAGAGNCCTTTCCAAGGNCACGCTCTTTCTGCAAATGAACAGCCTGGGAACTGAGGACACGGCTGTGTATTACTGTGCGAGNGATCTCTGGAGGTTCGGGGNATCNCACCTATACGGTATGGACGTCTGGGGCCAGGGGACCACGGTCACCGTCTCCTCANNN
-#    >M03592-154-000000000-JCY9V-1-2108-9799-13897
-#    NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNANTCACCTTCAGTAGTTATATACACTGGGTCCGCCAGGCTCCAGGCAAGGGGCTGGAGTGGGTGGCAGTCATATCACGTGATGGAAACAATAAATACTACGCAGACTCCGTGAAGGGCCGATTCACNATCTCCAGAGACCTTTCCAAGGACACGCTCTTTCTGCAAATGAACAGCCTGGGAACTGAGGACACGGCTGTGTATTACTGTGCGAGAGATCTCTGGAGGTTCGGGGTATCCCACCNATACGGTATGNACNTCTGGGGCCAGGGGACCACGGTCACCGTCTCCTCANNN
-#    >M03592-154-000000000-JCY9V-1-2116-13304-13947
-#    NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNACTCACCTTCANTAGCTATATACACTGGGTCCGCCAGGCTCCAGGCAAGGGGCTGGAGTGGGTGGCAGTCATATCACATGATGGAAACAGTAAATACTACGCAGACTCCGTGAAGGGCCGATTCACCATCTCCAGAGACATTTCCAAGAACACGCTGTATCTGCAAATGAACAGCCTGAGAGCTGAGGACACGGCTGTGTATTACTGTGCGAGAGATCTCTGGAGGTTCGGGGAGTCCCACCTATACGGTATGGACGTCTGGGGCCAAGGGACCACGGTCACCGTCTCCTCANNN
-#    >M03592-154-000000000-JCY9V-1-2114-26424-16841
-#    NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNACTCTNCTTCAGTAGTTATATNCACTGGGTCCGCCAGGCTCCAGGCAAGGGGCTGGAGTGGGTGGCAGTCATATCACATGATGGAAACAATAAATACTACGCAGATTCCGTGAAGGGCCGATTCACCATCTCCAGAGACCTTTCCAAGANCACGCTCTCTCTGCAAATGAACAGCCTGGGAACTGAGGACACGGCTGTGTATTATTGTGCGAGAGNTCTCTGGNGGTTCGGGGTGTCCCACCTATACGGCNTGGACGTCTGGGGCCAGGGGACNNCGGTCACCGTCTCCTCANNN
-#    >M03592-154-000000000-JCY9V-1-1115-19386-20227
-#    NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNACTNACCTTCAGTAGCTATATACACTGGGTCCGCCAGGCTCCAGGCAAGGGGCTGGAGNGGGTGGCAGTCATATCACATGATGGAAACAATAAATACTACGCAGACTCCGTGAAGGGCCGATTCACCATCTCCAGAGACCTTTCCAAGAACACGCTCTTTCTGCAAATGAACAGCCTGGGAGCTGATGACACGGCTGTGTATTACTGTGCGAGAGATCTCTGGAGGTTCGGGGTGTCCCACCTATACGGTATGGACGTNTGGGGCCAAGGGACCACGGTCACCGTCTCCTCANNN
-#    >M03592-154-000000000-JCY9V-1-2108-23373-15593
-#    NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNACTCACCTTCAGTAGCTATATACACTNNGTCCGCCAGNCTCCAGGCAAGGGGCTGGNGTGGGTGGCAGTCATATCACATGATGGGAACAGTAGATACTACGCAGACTCCGTGAAGGGCCGATTCACCGTCNCCAGAGACCNTTCCGAGAACACGCTGTATCTCCAAATGAACAGCNTGAGAGCTGACGACACGGCTGTGTATTACTNTGCGAGAGATCTCTNGAGGTTCGGGGAGTCCCACCTATACGGTATGGACGTCTGGGGCCAAGGGACCACGGTCACCGTCTCCTCANNN
-#    >M03592-154-000000000-JCY9V-1-2105-2262-11199
-#    NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNACTCACCTTCAGTAGTTATATACACTGGGTCCGCCAGGCTCCAGGCAAGGGGCTGGAGTGGGTGGCAGTCATATCACATGATGGAAACAATAAATACTACGCAGACTCCGTGAAGGGCCGATTCACCATCTCCAGAGACCTTTCCAAGAACACGCTCTTTCTGCAAATGAACAGCCTGGGAACTGAGGACACGGCTGTGTATTACTGTGCGAGAGATCTCTGGAGGTTCGGGGTGTCCCACCNATACGGTATGGACGTNTGGGGCCAGGGGACCACGGTCACCGTCTCCTCANNN
-#    >615860_GERM
-#    CAGGTGCAGCTGGTGGAGTCTGGGGGAGGCGTGGTCCAGCCTGGGAGGTCCCTGAGACTCTCCTGTGCAGCCTCTGGATTCACCTTCAGTAGCTATATGCACTGGGTCCGCCAGGCTCCAGGCAAGGGGCTGGAGTGGGTGGCAGTTATATCATATGATGGAAGCAATAAATACTACGCAGACTCCGTGAAGGGCCGATTCACCATCTCCAGAGACAATTCCAAGAACACGCTGTATCTGCAAATGAACAGCCTGAGAGCTGAGGACACGGCTGTGTATTAC---------------------------------------------------------GGCCAAGGGACCACGGTCACCGTCTCCTCANNN
-#    """
-#tree_topology = "((((((M03592-154-000000000-JCY9V-1-2114-26424-16841:0.0558811845,(M03592-154-000000000-JCY9V-1-2108-9799-13897:0.0104575587,M03592-154-000000000-JCY9V-1-2117-9143-9891:0.0000000100):0.0209073238):0.0000008340,M03592-154-000000000-JCY9V-1-2105-2262-11199:0.0000000100):0.0313860135,M03592-154-000000000-JCY9V-1-1115-19386-20227:0.0104092512):0.0527013194,M03592-154-000000000-JCY9V-1-2108-23373-15593:0.0670429058):0.0103785606,M03592-154-000000000-JCY9V-1-2116-13304-13947:0.0000000100):0.1229925141,615860_GERM:0.0000100000);"
-#tree_analyzer_flow(fasta, tree_topology)
+    #Insert results to list
+    results = {
+        "num_leaves": count_leafs,
+        "max_mutations_distance_sequence": max_distance_mutations,
+        "min_mutations_distance_sequence": min_distance_mutations,
+        "max_mutations_between_leaves": max_distance_mutations_leafs,
+        "min_mutations_between_leaves": min_distance_mutations_leafs,
+        "num_synonymous_mutations": count_synonymous,
+        "num_not_synonymous_mutations": count_not_synonymous,
+        "max_synonymous_mutations_in_sequence": max_synonymous_mutations_in_sequence,
+        "omega_ratio_farthest_sequence": omega_farthest,
+        "omega_ratio_closest_sequence": omega_closest,
+        "sequence_id_list": sequence_id_list
+    }
+    return results
