@@ -1,6 +1,17 @@
 ################################################################################
 import os
 import tree_analyzer as tree_functions
+import time 
+import pandas as pd
+################################################################################
+#Declare Global Variables
+start_time = time.time()
+df_results = pd.DataFrame()
+################################################################################
+#Inject original Immune DB table to Panda
+df_immune_db = pd.read_csv("all_samples_together_manipulated_removed_problem_clones.tsv", sep='\t')
+print(df_immune_db.head())
+################################################################################
 #Define Codon 2 Amino Acid Dict
 aa_dict = {
   "TTT" : "F",
@@ -72,13 +83,10 @@ aa_dict = {
 #Read Repertoire Trees File from IgphyML
 repertoire_file = open("subject005_sequence_clones_time_point4_igphyml-pass_test.tab", "r")
 #with open("615860_all_time_points.fasta", "r") as fasta_file:
-#	fasta_data = fasta_file.read()
-#test fasta file
-#print(fasta_data)
 ################################################################################
 #Parse Repertoire Trees File from IgphyML
 start_parsing_flag = 0
-print("-------------------------- Test Parsing ----------------------")
+#print("-------------------------- Test Parsing ----------------------")
 while True:
 	fasta_str = ""
 	fasta_file_str = ""
@@ -89,22 +97,34 @@ while True:
 	line = repertoire_file.readline()
 	if not line:
 		break
-	print("----------- Line Number ------------- ", start_parsing_flag," -------------------")
-	print(line)
+	#print("----------- Line Number ------------- ", start_parsing_flag," -------------------")
+	#print(line)
 	if (start_parsing_flag > 2):
 		split_line = line.split()
 		clone_number = split_line[0]
 		tree_topology_str = split_line[14]
-		print("---------------------- Test ---------------")
-		print("Clone number is: ", clone_number)
-		print("Tree topology string is: ",tree_topology_str)
+		#print("---------------------- Test ---------------")
+		#print("Clone number is: ", clone_number)
+		#print("Tree topology string is: ",tree_topology_str)
 		fasta_file_str = str(clone_number) + ".fasta"
-		print("Fasta File string is: ", fasta_file_str)
+		#print("Fasta File string is: ", fasta_file_str)
 		with open(("subject005_sequence_clones_time_point4/" + fasta_file_str) , "r") as fasta_file:
 			fasta_str = fasta_file.read()
-			print(fasta_str)
-		tree_functions.tree_analyzer_flow(fasta_str, tree_topology_str)
+			fasta_file.close()
+			#print(fasta_str)
+		clone_results_container = tree_functions.tree_analyzer_flow(fasta_str, tree_topology_str)
+		clone_results_container['clone_id'] = clone_number
+		#print("--------------Test Results Container---------------------")
+		#print(clone_results_container)
+		################################################################################
+		#Move results to Panda Table !!!
+		df_results = df_results.append(clone_results_container, ignore_index=True)
+		print(df_results.head(6))
+		print(df_results[df_results["clone_id"] == "605501"])
 repertoire_file.close()
+################################################################################
+print("--- %s seconds ---" % (time.time() - start_time))
+################################################################################
 #test_str = file.readline()
 #print(test_str)
 #test_split = test_str.split()
