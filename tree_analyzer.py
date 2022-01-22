@@ -118,7 +118,9 @@ def cdr3_consensus_calc(germ_seq,seqs):
   return germline_sequence
 ################################################################################
 #Synonymous non Synonymous mutations counter
-#Function to count synonymous non synonymous between germline sequence and SUT, sequence under test. 
+#Function to count synonymous non synonymous between germline sequence and SUT, sequence under test.
+#Please note that in this function we calculate synonymous and not synonymous mutations between
+#Amino Acids : V,A,T,G,P (the AA that have 4 codons coding to them).
 def synonymous_mutation_calc(germ_seq,seq):
   count_synon = 0
   count_not_synon = 0
@@ -154,10 +156,6 @@ def synonymous_mutation_calc(germ_seq,seq):
         #Translate codons to AA    
         aa_str_seq = aa_dict[codon_str_seq]
         aa_str_germ = aa_dict[codon_str_germ]
-        print(codon_str_germ)
-        print(codon_str_seq)
-        print(aa_str_germ)
-        print(aa_str_seq)
         if ((aa_str_germ == "V") or (aa_str_germ == "A") or (aa_str_germ == "T") or (aa_str_germ == "G") or (aa_str_germ == "P")):
           if  (aa_str_germ == aa_str_seq):
             count_synon = count_synon + 1
@@ -174,16 +172,54 @@ def synonymous_mutation_calc(germ_seq,seq):
   return count_synon,count_not_synon,max_synonymous_mutations
 ################################################################################
 #Synonymous non Synonymous mutations counter
-#Function to count synonymous non synonymous mutation ratio between germline sequence and farthest sequence and closest sequence to germline. 
-
-
-
-
-
-
-
-
-
+#Function to count synonymous non synonymous mutation ratio between germline sequence and farthest sequence and closest sequence to germline.
+#Please note that in this function we calculate synonymous and not synonymous mutations for all amino acids.
+def synonymous_mutation_ratio_per_seq_calc(germ_seq,sequence):
+  count_synon = 0
+  count_not_synon = 0
+  start_calc_flag = 0
+  count_index = 1
+  codon_str_seq = ""
+  codon_str_germ = ""
+  aa_str_seq = ""
+  aa_str_germ = ""
+  for index in range(0, len(sequence)):
+    if (sequence[index] != "N"):
+        start_calc_flag = 1
+    if (start_calc_flag == 0):
+        continue
+    codon_str_seq = codon_str_seq + sequence[index]
+    codon_str_germ = codon_str_germ + germ_seq[index]
+    if ((count_index % 3) == 0):
+    #one of the neclutides is N therefore not possible to deduce
+        if (("N" in codon_str_seq) or ("N" in codon_str_germ)): 
+            codon_str_seq = ""
+            codon_str_germ = ""
+            count_index = 1
+            continue
+        #No mutations in codon
+        if (codon_str_seq == codon_str_germ):
+            codon_str_seq = ""
+            codon_str_germ = ""
+            count_index = 1
+            continue
+        #Translate codons to AA    
+        aa_str_seq = aa_dict[codon_str_seq]
+        aa_str_germ = aa_dict[codon_str_germ]
+        if  (aa_str_germ == aa_str_seq):
+            count_synon = count_synon + 1
+        else:
+            count_not_synon = count_not_synon + 1
+        codon_str_seq = ""
+        codon_str_germ = ""
+        count_index = 1
+    else:
+        count_index = count_index + 1
+  if (count_synon == 0):
+    sequence_omega = "NULL"
+  else:
+    sequence_omega = (count_not_synon / count_synon)
+  return sequence_omega
 ################################################################################
 #Synonymous non Synonymous mutations counter
 #Function to count synonymous non synonymous between germline sequence and SUT, sequence under test.
@@ -242,8 +278,10 @@ def tree_analyzer_flow(fasta,tree_topology_str):
     #Cost function of every neclutide mutation is 1
     max_distance_mutations = 0
     max_distance_seq_name = ""
+    max_distance_sequence = ""
     min_distance_mutations = 500
     min_distance_seq_name = ""
+    min_distance_sequence = ""
     for node in t.traverse(strategy="postorder"):
         if node.is_leaf():
             if "GERM" in node.name:
@@ -254,9 +292,11 @@ def tree_analyzer_flow(fasta,tree_topology_str):
             if (mutation_distance > max_distance_mutations):
                 max_distance_mutations = mutation_distance
                 max_distance_seq_name = node.name
+                max_distance_sequence = node.sequence
             if (mutation_distance < min_distance_mutations):
                 min_distance_mutations = mutation_distance
                 min_distance_seq_name = node.name
+                min_distance_sequence = node.sequence
 ################################################################################
     #Count the Max/Min Leaf sequneces distance
     #Assumptions:
@@ -298,6 +338,10 @@ def tree_analyzer_flow(fasta,tree_topology_str):
     count_not_synonymous = 0;
     count_synonymous,count_not_synonymous,max_synonymous_mutations_in_sequence = synonymous_mutation_calc(germline_sequence_with_cdr3,sequences_list)
 ################################################################################
+    #Calculate the non synonymous/synonymous mutations ratio for the farthest and closest sequence to germline.
+    omega_farthest = synonymous_mutation_ratio_per_seq_calc(germline_sequence_with_cdr3, max_distance_sequence)
+    omega_closest = synonymous_mutation_ratio_per_seq_calc(germline_sequence_with_cdr3, min_distance_sequence)
+################################################################################
    #Print Results:
     print("---------Tree Analyzer Results---------")
     print("Number of Leafs = ",count_leafs)
@@ -312,6 +356,8 @@ def tree_analyzer_flow(fasta,tree_topology_str):
     print("Number of synonymous mutations is ",count_synonymous)
     print("Number of not synonymous mutations is ",count_not_synonymous)
     print("Max Number of synonymous mutations in sequence is ",max_synonymous_mutations_in_sequence)
+    print("Farthest sequence omega ratio is ", omega_farthest)
+    print("Closest sequence omega ratio is ", omega_closest)
 ################################################################################
 #test analyzer
 #fasta = """
