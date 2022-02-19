@@ -147,6 +147,11 @@ def synonymous_mutation_calc(germ_seq,seq):
           codon_str_germ = ""
           count_index = 1
           continue
+        if (("-" in codon_str_seq) or ("-" in codon_str_germ)): 
+          codon_str_seq = ""
+          codon_str_germ = ""
+          count_index = 1
+          continue
         #No mutations in codon
         if (codon_str_seq == codon_str_germ):
           codon_str_seq = ""
@@ -197,6 +202,11 @@ def synonymous_mutation_ratio_per_seq_calc(germ_seq,sequence):
             codon_str_germ = ""
             count_index = 1
             continue
+        if (("-" in codon_str_seq) or ("-" in codon_str_germ)): 
+            codon_str_seq = ""
+            codon_str_germ = ""
+            count_index = 1
+            continue
         #No mutations in codon
         if (codon_str_seq == codon_str_germ):
             codon_str_seq = ""
@@ -216,7 +226,7 @@ def synonymous_mutation_ratio_per_seq_calc(germ_seq,sequence):
     else:
         count_index = count_index + 1
   if (count_synon == 0):
-    sequence_omega = "NULL"
+    sequence_omega = 0
   else:
     sequence_omega = (count_not_synon / count_synon)
   return sequence_omega
@@ -260,8 +270,8 @@ def tree_analyzer_flow(fasta,tree_topology_str):
     for node in t.traverse(strategy="postorder"):
         if node.is_leaf():
             if "GERM" in node.name:
-                print(node)
-                print(node.sequence)
+                #print(node)
+                #print(node.sequence)
                 germline_sequence = node.sequence
             else:
                 name_len = len(node.name)
@@ -271,8 +281,8 @@ def tree_analyzer_flow(fasta,tree_topology_str):
 ################################################################################
     #Handle the germline CDR3 consensus:
     germline_sequence_with_cdr3 = cdr3_consensus_calc(germline_sequence,sequences_list)
-    print("Germline Sequence with CDR3 Consensus is")
-    print(germline_sequence_with_cdr3)
+    #print("Germline Sequence with CDR3 Consensus is")
+    #print(germline_sequence_with_cdr3)
     ################################################################################
     #Count the Tree depth by calculating the distance in mutations from the germline!
     #Assumptions:
@@ -369,9 +379,9 @@ def tree_analyzer_flow(fasta,tree_topology_str):
         "min_mutations_distance_sequence": min_distance_mutations,
         "max_mutations_between_leaves": max_distance_mutations_leafs,
         "min_mutations_between_leaves": min_distance_mutations_leafs,
-        "num_synonymous_mutations": count_synonymous,
-        "num_not_synonymous_mutations": count_not_synonymous,
-        "max_synonymous_mutations_in_sequence": max_synonymous_mutations_in_sequence,
+        "num_synonymous_mutations_four_fold": count_synonymous,
+        "num_not_synonymous_mutations_four_fold": count_not_synonymous,
+        "max_synonymous_mutations_in_sequence_four_fold": max_synonymous_mutations_in_sequence,
         "omega_ratio_farthest_sequence": omega_farthest,
         "omega_ratio_closest_sequence": omega_closest,
         "sequence_id_list": sequence_id_list
