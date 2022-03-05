@@ -90,11 +90,11 @@ def clone_spike_indicator(sequence_id,df_immune_db):
 		airr_row_seq_id = df_immune_db.loc[df_immune_db['sequence_id'] == id_original]
 		if "Spike+" in airr_row_seq_id.at[int(airr_row_seq_id.index.values),'METADATA_cell_subset_description']:
 			spike_plus_indicator = 1
-			print("spike+ indicator")
+			##print("spike+ indicator")
 		else:
 			spike_minus_indicator = 1
-			print("spike- indicator")
-		print(airr_row_seq_id.at[int(airr_row_seq_id.index.values),'METADATA_cell_subset_description'])
+			##print("spike- indicator")
+		##print(airr_row_seq_id.at[int(airr_row_seq_id.index.values),'METADATA_cell_subset_description'])
 	if (spike_minus_indicator) and (spike_plus_indicator):
 		return "+/-"
 	elif (spike_minus_indicator):
