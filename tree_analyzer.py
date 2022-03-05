@@ -230,10 +230,86 @@ def synonymous_mutation_ratio_per_seq_calc(germ_seq,sequence):
   else:
     sequence_omega = (count_not_synon / count_synon)
   return sequence_omega
+
 ################################################################################
 #Synonymous non Synonymous mutations counter
-#Function to count synonymous non synonymous between germline sequence and SUT, sequence under test.
-def tree_analyzer_flow(fasta,tree_topology_str):
+#Function to count synonymous non synonymous mutation ratio between germline sequence and farthest sequence and closest sequence to germline.
+#Please note that in this function we calculate synonymous and not synonymous mutations for all amino acids.
+def synonymous_mutation_ratio_per_seq_calc_cdr_fr_sections(germ_seq,sequence,cdr3_length):
+  count_synon_cdr = 0
+  count_not_synon_cdr = 0
+  count_synon_fr = 0
+  count_not_synon_fr = 0
+  start_calc_flag = 0
+  count_index = 1
+  codon_str_seq = ""
+  codon_str_germ = ""
+  aa_str_seq = ""
+  aa_str_germ = ""
+  for index in range(0, len(sequence)):
+    codon_str_seq = codon_str_seq + sequence[index]
+    codon_str_germ = codon_str_germ + germ_seq[index]
+    if ((count_index % 3) == 0):
+    #one of the neclutides is N therefore not possible to deduce
+        if (("N" in codon_str_seq) or ("N" in codon_str_germ)): 
+            codon_str_seq = ""
+            codon_str_germ = ""
+            count_index = 1
+            continue
+        if (("-" in codon_str_seq) or ("-" in codon_str_germ)): 
+            codon_str_seq = ""
+            codon_str_germ = ""
+            count_index = 1
+            continue
+        #No mutations in codon
+        if (codon_str_seq == codon_str_germ):
+            codon_str_seq = ""
+            codon_str_germ = ""
+            count_index = 1
+            continue
+        #Translate codons to AA    
+        aa_str_seq = aa_dict[codon_str_seq]
+        aa_str_germ = aa_dict[codon_str_germ]
+        if  (aa_str_germ == aa_str_seq):
+            if (((index+1) > 79 and (index+1) <= 114) or ((index+1) > 166 and (index+1) <= 195) or ((index+1) > 310 and (index+1) <= (309+ cdr3_length))):  
+                count_synon_cdr = count_synon_cdr + 1
+            else:
+                count_synon_fr = count_synon_fr + 1
+        else:
+            if (((index+1) > 79 and (index+1) <= 114) or ((index+1) > 166 and (index+1) <= 195) or ((index+1) > 310 and (index+1) <= (309+ cdr3_length))):
+                count_not_synon_cdr = count_not_synon_cdr + 1
+            else:
+                count_not_synon_fr = count_not_synon_fr + 1
+        codon_str_seq = ""
+        codon_str_germ = ""
+        count_index = 1
+    else:
+        count_index = count_index + 1
+  if (count_synon_cdr == 0):
+    sequence_omega_cdr = 0
+  else:
+    sequence_omega_cdr = (count_not_synon_cdr / count_synon_cdr)
+  if (count_synon_fr == 0):
+    sequence_omega_fr = 0
+  else:
+    sequence_omega_fr = (count_not_synon_fr / count_synon_fr)
+  return sequence_omega_cdr, sequence_omega_fr
+
+################################################################################
+#Extraction of Sequence Alignment, Germline Alignment and CDR3 juntction from AIRR Table
+#
+def airr_table_info_extraction(sequence_id, df_immune_db):
+    id_original = sequence_id.replace("-",":")
+    id_original = id_original.replace("M03592:154:000000000:","M03592:154:000000000-")
+    airr_row_seq_id = df_immune_db.loc[df_immune_db['sequence_id'] == id_original]
+    sequence_alignment = airr_row_seq_id.at[int(airr_row_seq_id.index.values),'sequence_alignment']
+    germline_alignment = airr_row_seq_id.at[int(airr_row_seq_id.index.values),'germline_alignment']
+    junction_cdr3 = airr_row_seq_id.at[int(airr_row_seq_id.index.values),'junction']
+    return sequence_alignment, germline_alignment, len(junction_cdr3)
+################################################################################
+#Main Tree Analyzer Flow
+#Tree Analyzer flow is the flow to extract all the tree features we are investigating per clone tree topology.
+def tree_analyzer_flow(fasta,tree_topology_str,df_immune_db):
     # Load a tree and link it to an alignment.
     tree_topolo_str = "((((((M03592-154-000000000-JCY9V-1-2114-26424-16841:0.0558811845,(M03592-154-000000000-JCY9V-1-2108-9799-13897:0.0104575587,M03592-154-000000000-JCY9V-1-2117-9143-9891:0.0000000100):0.0209073238):0.0000008340,M03592-154-000000000-JCY9V-1-2105-2262-11199:0.0000000100):0.0313860135,M03592-154-000000000-JCY9V-1-1115-19386-20227:0.0104092512):0.0527013194,M03592-154-000000000-JCY9V-1-2108-23373-15593:0.0670429058):0.0103785606,M03592-154-000000000-JCY9V-1-2116-13304-13947:0.0000000100):0.1229925141,615860_GERM:0.0000100000);"
     t = PhyloTree(tree_topology_str, alignment=fasta, alg_format="fasta")
@@ -355,6 +431,16 @@ def tree_analyzer_flow(fasta,tree_topology_str):
     omega_farthest = synonymous_mutation_ratio_per_seq_calc(germline_sequence_with_cdr3, max_distance_sequence)
     omega_closest = synonymous_mutation_ratio_per_seq_calc(germline_sequence_with_cdr3, min_distance_sequence)
 ################################################################################
+    #Calculate non synonymous/synonymous mutations ratio for farthest and closest seq. to germline with division to CDR's and FR's sections
+    max_sequence_alignment, max_germline_alignment, max_cdr3_length = airr_table_info_extraction(max_distance_seq_name, df_immune_db)
+    omega_farthest_cdr, omega_farthest_fr = synonymous_mutation_ratio_per_seq_calc_cdr_fr_sections(max_germline_alignment,max_sequence_alignment,max_cdr3_length)
+    print('omega farthest cdr = ', omega_farthest_cdr)
+    print('omega farthest fr = ', omega_farthest_fr)
+    min_sequence_alignment, min_germline_alignment, min_cdr3_length = airr_table_info_extraction(min_distance_seq_name, df_immune_db)
+    omega_closest_cdr, omega_closest_fr = synonymous_mutation_ratio_per_seq_calc_cdr_fr_sections(min_germline_alignment,min_sequence_alignment,min_cdr3_length)
+    print('omega closest cdr = ', omega_closest_cdr)
+    print('omega closest fr = ', omega_closest_fr)
+################################################################################
    #Print Results:
     #print("---------Tree Analyzer Results---------")
     #print("Number of Leafs = ",count_leafs)
@@ -384,6 +470,10 @@ def tree_analyzer_flow(fasta,tree_topology_str):
         "max_synonymous_mutations_in_sequence_four_fold": max_synonymous_mutations_in_sequence,
         "omega_ratio_farthest_sequence": omega_farthest,
         "omega_ratio_closest_sequence": omega_closest,
+        "omega_ratio_farthest_sequence_cdr": omega_farthest_cdr,
+        "omega_ratio_farthest_sequence_fr": omega_farthest_fr,
+        "omega_ratio_closest_sequence_cdr": omega_closest_cdr,
+        "omega_ratio_closest_sequence_fr": omega_closest_fr,
         "sequence_id_list": sequence_id_list
     }
     return results
