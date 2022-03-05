@@ -171,7 +171,7 @@ while True:
 			fasta_str = fasta_file.read()
 			fasta_file.close()
 			#print(fasta_str)
-		clone_results_container = tree_functions.tree_analyzer_flow(fasta_str, tree_topology_str)
+		clone_results_container = tree_functions.tree_analyzer_flow(fasta_str, tree_topology_str, df_immune_db)
 		clone_results_container['clone_id'] = clone_number
 		clone_results_container['spike']= clone_spike_indicator(clone_results_container['sequence_id_list'], df_immune_db)
 		################################################################################
