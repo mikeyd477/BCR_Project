@@ -1,4 +1,12 @@
+"""
+
+author: Michael Dubovsky, Technion Israel Institute of Technology @
+
+moodule to parse IgPhyML phylogenetic tree output and store the information output from Tree Analyzer Block.
+
+"""
 ################################################################################
+#Imports Section
 import os
 import tree_analyzer as tree_functions
 import time 
@@ -78,23 +86,23 @@ aa_dict = {
   "GGG" : "G"
 }
 ################################################################################
-#Distance in Mutation calculation function.
-#Function to calculate distance in mutation between two given neclutide sequences.
+#Spike Indicator Decision for Clone Lineage
+#Function to decide the spike clone indicator by crossing with metadata from AIRR DB file from ImmuneDB.
+#"+" = Spike+; "-" = Spike-; "+/-" = Mixed Spike+ & Spike-
 def clone_spike_indicator(sequence_id,df_immune_db):
 	spike_plus_indicator = 0
 	spike_minus_indicator = 0
 	for id in sequence_id:
+		#####################################################################################
+		#Handle the issue that IgPhyML flow changed the sequence ID character ":" to "-" (issue with IgPhyML flow!)
 		id_original = id.replace("-",":")
-		id_original = id_original.replace("M03592:154:000000000:","M03592:154:000000000-") 
-		#print(id_original)
+		id_original = id_original.replace("M03592:154:000000000:","M03592:154:000000000-")
+		#####################################################################################
 		airr_row_seq_id = df_immune_db.loc[df_immune_db['sequence_id'] == id_original]
 		if "Spike+" in airr_row_seq_id.at[int(airr_row_seq_id.index.values),'METADATA_cell_subset_description']:
 			spike_plus_indicator = 1
-			##print("spike+ indicator")
 		else:
 			spike_minus_indicator = 1
-			##print("spike- indicator")
-		##print(airr_row_seq_id.at[int(airr_row_seq_id.index.values),'METADATA_cell_subset_description'])
 	if (spike_minus_indicator) and (spike_plus_indicator):
 		return "+/-"
 	elif (spike_minus_indicator):
@@ -107,7 +115,6 @@ def clone_spike_indicator(sequence_id,df_immune_db):
 #Parse Command Line Argument Section
 #Create object for parsing command-line options
 parser = argparse.ArgumentParser(description="Command line for Tree Parser,Reportoire file,Fasta Files Directory")
-#Add argument which takes path to IgPhyML reportoire file as an input
 parser.add_argument("-r", "--repertoire", type=str, help="Path to IgPhyML repertoire file")
 parser.add_argument("-f", "--fasta", type=str, help="Path to IgPhyML FASTA files DIR")
 parser.add_argument("-o", "--output", type=str, help="Output CSV name")
@@ -131,11 +138,6 @@ if not args.airr_db_file:
 	print("No AIRR DB File has been given. Please insert AIRR DB File in command line --airr_db_file")
 	print("For help type --help")
 	exit()
-# Check if the given file have bag extension
-#if os.path.splitext(args.input)[1] != ".bag":
-#	print("The given file is not of correct file format.")
-#	print("Only .bag files are accepted")
-#    exit()
 ################################################################################
 #Inject original Immune DB table to Panda
 df_immune_db = pd.read_csv(args.airr_db_file, sep='\t')
@@ -145,7 +147,6 @@ repertoire_file = open(args.repertoire, "r")
 ################################################################################
 #Parse Repertoire Trees File from IgphyML
 start_parsing_flag = 0
-#print("-------------------------- Test Parsing ----------------------")
 while True:
 	fasta_str = ""
 	fasta_file_str = ""
@@ -156,34 +157,22 @@ while True:
 	line = repertoire_file.readline()
 	if not line:
 		break
-	#print("----------- Line Number ------------- ", start_parsing_flag," -------------------")
-	#print(line)
 	if (start_parsing_flag > 2):
-		split_line = line.split()
-		clone_number = split_line[0]
-		tree_topology_str = split_line[14]
-		#print("---------------------- Test ---------------")
-		#print("Clone number is: ", clone_number)
-		#print("Tree topology string is: ",tree_topology_str)
-		fasta_file_str = str(clone_number) + ".fasta"
-		#print("Fasta File string is: ", fasta_file_str)
-		with open((args.fasta + "/" + fasta_file_str) , "r") as fasta_file:
-			fasta_str = fasta_file.read()
-			fasta_file.close()
-			#print(fasta_str)
-		clone_results_container = tree_functions.tree_analyzer_flow(fasta_str, tree_topology_str, df_immune_db)
-		clone_results_container['clone_id'] = clone_number
-		clone_results_container['spike']= clone_spike_indicator(clone_results_container['sequence_id_list'], df_immune_db)
-		################################################################################
+                split_line = line.split()
+                clone_number = split_line[0]
+                tree_topology_str = split_line[14]
+                fasta_file_str = str(clone_number) + ".fasta"
+                with open((args.fasta + "/" + fasta_file_str) , "r") as fasta_file:
+                        fasta_str = fasta_file.read()
+                        fasta_file.close()
+                clone_results_container = tree_functions.tree_analyzer_flow(fasta_str, tree_topology_str, df_immune_db)
+                clone_results_container['clone_id'] = clone_number
+                clone_results_container['spike']= clone_spike_indicator(clone_results_container['sequence_id_list'], df_immune_db)
 		#Move results to Panda Table !!!
-		df_results = df_results.append(clone_results_container, ignore_index=True)
-print(df_results.head(51))
+                df_results = df_results.append(clone_results_container, ignore_index=True)
 repertoire_file.close()
-##Dump the data to csv to not re-run
+##Dump the data to final csv file
 df_results.to_csv(args.output, index=False)
-###Test some distribution number of leaves
-#df_results.hist(column= 'omega_ratio_closest_sequence')
-#plt.show()
 ################################################################################
 print("--- %s seconds ---" % (time.time() - start_time))
 ################################################################################
