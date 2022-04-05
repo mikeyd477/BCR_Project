@@ -1,18 +1,20 @@
-# -*- coding: utf-8 -*-
 """
 
-"""
+author: Michael Dubovsky, Technion Israel Institute of Technology
 
+moodule to analyze features of phylogenetic trees for time dependency study purposes.
+
+The moodule runs with the wrapper "tree_parser"
+
+"""
 ################################################################################
+#Import Section
 import os
-#os.system("pip install ete3 pyqt5")
-#os.environ['QT_QPA_PLATFORM']='offscreen'
 from ete3 import Tree
 from ete3 import PhyloTree
-#from ete3 import TreeStyle
 from collections import Counter
 ################################################################################
-#Definitions
+#Define Codon 2 Amino Acid Dict
 aa_dict = {
   "TTT" : "F",
   "TTC" : "F",
@@ -82,11 +84,15 @@ aa_dict = {
 ################################################################################
 #Distance in Mutation calculation function.
 #Function to calculate distance in mutation between two given neclutide sequences.
-def mutation_dist_calc(germ_seq,seq):
+def mutation_dist_calc(germ_seq,seq,seq_name):
   distance = 0
   # Iterate over the sequences
   if (len(germ_seq) != len(seq)):
     print("Error the alignment sequence and the germline seq are with different sizes!!!")
+    print(germ_seq)
+    print(seq_name)
+    print(seq)
+    exit()
   for index in range(0, len(germ_seq)):
     if (germ_seq[index] == "N" ):
       continue
@@ -102,6 +108,7 @@ def mutation_dist_calc(germ_seq,seq):
 ################################################################################
 #CDR3 Consensus Handling
 #Function to insert the CDR3 consensus by checking the majority between the given sequences.
+#IgPhyML output is masking the CDR3 region of the germline with gaps so we calculate the CDR3 consensus and insert it to Germline.
 def cdr3_consensus_calc(germ_seq,seqs):
   germline_sequence = ""
   for index in range(0, len(germ_seq)):
@@ -117,8 +124,8 @@ def cdr3_consensus_calc(germ_seq,seqs):
       germline_sequence = germline_sequence + str(consensus)
   return germline_sequence
 ################################################################################
-#Synonymous non Synonymous mutations counter
-#Function to count synonymous non synonymous between germline sequence and SUT, sequence under test.
+#Synonymous non Synonymous mutations counter for all sequences in clone lineage
+#Function to count synonymous non synonymous mutations between germline sequence and SUT, sequence under test.
 #Please note that in this function we calculate synonymous and not synonymous mutations between
 #Amino Acids : V,A,T,G,P (the AA that have 4 codons coding to them).
 def synonymous_mutation_calc(germ_seq,seq):
@@ -176,7 +183,7 @@ def synonymous_mutation_calc(germ_seq,seq):
         max_synonymous_mutations = count_synon_mutation_in_sequence
   return count_synon,count_not_synon,max_synonymous_mutations
 ################################################################################
-#Synonymous non Synonymous mutations counter
+#Synonymous non Synonymous mutations counter for one sequence
 #Function to count synonymous non synonymous mutation ratio between germline sequence and farthest sequence and closest sequence to germline.
 #Please note that in this function we calculate synonymous and not synonymous mutations for all amino acids.
 def synonymous_mutation_ratio_per_seq_calc(germ_seq,sequence):
@@ -232,7 +239,7 @@ def synonymous_mutation_ratio_per_seq_calc(germ_seq,sequence):
   return sequence_omega
 
 ################################################################################
-#Synonymous non Synonymous mutations counter
+#Synonymous non Synonymous mutations counter for one sequence with division to CDR and FR sections of the sequence
 #Function to count synonymous non synonymous mutation ratio between germline sequence and farthest sequence and closest sequence to germline.
 #Please note that in this function we calculate synonymous and not synonymous mutations for all amino acids.
 def synonymous_mutation_ratio_per_seq_calc_cdr_fr_sections(germ_seq,sequence,cdr3_length):
@@ -297,7 +304,7 @@ def synonymous_mutation_ratio_per_seq_calc_cdr_fr_sections(germ_seq,sequence,cdr
 
 ################################################################################
 #Extraction of Sequence Alignment, Germline Alignment and CDR3 juntction from AIRR Table
-#
+#This extracts the sequence and the germline with the annotation from the AIRR DB file. this is required to calculate the CDR & FR Sections.
 def airr_table_info_extraction(sequence_id, df_immune_db):
     id_original = sequence_id.replace("-",":")
     id_original = id_original.replace("M03592:154:000000000:","M03592:154:000000000-")
@@ -310,8 +317,7 @@ def airr_table_info_extraction(sequence_id, df_immune_db):
 #Main Tree Analyzer Flow
 #Tree Analyzer flow is the flow to extract all the tree features we are investigating per clone tree topology.
 def tree_analyzer_flow(fasta,tree_topology_str,df_immune_db):
-    # Load a tree and link it to an alignment.
-    tree_topolo_str = "((((((M03592-154-000000000-JCY9V-1-2114-26424-16841:0.0558811845,(M03592-154-000000000-JCY9V-1-2108-9799-13897:0.0104575587,M03592-154-000000000-JCY9V-1-2117-9143-9891:0.0000000100):0.0209073238):0.0000008340,M03592-154-000000000-JCY9V-1-2105-2262-11199:0.0000000100):0.0313860135,M03592-154-000000000-JCY9V-1-1115-19386-20227:0.0104092512):0.0527013194,M03592-154-000000000-JCY9V-1-2108-23373-15593:0.0670429058):0.0103785606,M03592-154-000000000-JCY9V-1-2116-13304-13947:0.0000000100):0.1229925141,615860_GERM:0.0000100000);"
+    # Load a tree and link it to an alignment from FASTA file.
     t = PhyloTree(tree_topology_str, alignment=fasta, alg_format="fasta")
 	#list to hold all sequence ID's
     sequence_id_list = []
@@ -324,6 +330,23 @@ def tree_analyzer_flow(fasta,tree_topology_str,df_immune_db):
             if (node.name[name_len-2:] == "_1"):
                 one_sequence_flag = 1
                 break
+################################################################################
+    #Insert the annotated sequences to the tree:
+    #Find the germline sequence and insert all other sequences to list:
+    germline_sequence = ""
+    germline_sequence_with_cdr3 = ""
+    sequences_list = []
+    for node in t.traverse(strategy="postorder"):
+        temp = ""
+        if node.is_leaf():
+            if "GERM" in node.name:
+                continue
+            else:
+                name_len = len(node.name)
+                if (node.name[name_len-2:] != "_1"):
+                    node.sequence, germline_sequence, temp = airr_table_info_extraction(node.name, df_immune_db)
+                    sequences_list.append(node.sequence)
+                    sequence_id_list.append(node.name)
 ################################################################################
     #Count number of leafs by checking if the branch distance is higher than the threshold.
     #Insert Leafs sequences to List
@@ -339,26 +362,10 @@ def tree_analyzer_flow(fasta,tree_topology_str,df_immune_db):
                     count_leafs = count_leafs+1
                     leaf_nodes_list.append(node)
 ################################################################################
-    #Find the germline sequence and insert all other sequences to list:
-    germline_sequence = ""
-    germline_sequence_with_cdr3 = ""
-    sequences_list = []
-    for node in t.traverse(strategy="postorder"):
-        if node.is_leaf():
-            if "GERM" in node.name:
-                #print(node)
-                #print(node.sequence)
-                germline_sequence = node.sequence
-            else:
-                name_len = len(node.name)
-                if (node.name[name_len-2:] != "_1"):
-                    sequences_list.append(node.sequence)
-                    sequence_id_list.append(node.name)
 ################################################################################
     #Handle the germline CDR3 consensus:
-    germline_sequence_with_cdr3 = cdr3_consensus_calc(germline_sequence,sequences_list)
-    #print("Germline Sequence with CDR3 Consensus is")
-    #print(germline_sequence_with_cdr3)
+    #germline_sequence_with_cdr3 = cdr3_consensus_calc(germline_sequence,sequences_list)
+    germline_sequence_with_cdr3 = germline_sequence
     ################################################################################
     #Count the Tree depth by calculating the distance in mutations from the germline!
     #Assumptions:
@@ -375,10 +382,8 @@ def tree_analyzer_flow(fasta,tree_topology_str,df_immune_db):
         if node.is_leaf():
             if "GERM" in node.name:
                 continue
-            mutation_distance = mutation_dist_calc(germline_sequence_with_cdr3,node.sequence)
-            #print("sequence name ",node.name)
-            #print("sequence distance ",mutation_distance)
-            if (mutation_distance > max_distance_mutations):
+            mutation_distance = mutation_dist_calc(germline_sequence_with_cdr3,node.sequence,node.name)
+            if (mutation_distance >= max_distance_mutations):
                 max_distance_mutations = mutation_distance
                 max_distance_seq_name = node.name
                 max_distance_sequence = node.sequence
@@ -410,7 +415,7 @@ def tree_analyzer_flow(fasta,tree_topology_str,df_immune_db):
             for nodeB in leaf_nodes_list:
                 if (nodeA.name == nodeB.name):
                     continue
-                mutation_distance = mutation_dist_calc(nodeA.sequence,nodeB.sequence)
+                mutation_distance = mutation_dist_calc(nodeA.sequence,nodeB.sequence,nodeA.name)
                 if (mutation_distance > max_distance_mutations_leafs):
                     max_distance_mutations_leafs = mutation_distance
                     max_distance_seq_name_leafs_a = nodeA.name
@@ -434,29 +439,8 @@ def tree_analyzer_flow(fasta,tree_topology_str,df_immune_db):
     #Calculate non synonymous/synonymous mutations ratio for farthest and closest seq. to germline with division to CDR's and FR's sections
     max_sequence_alignment, max_germline_alignment, max_cdr3_length = airr_table_info_extraction(max_distance_seq_name, df_immune_db)
     omega_farthest_cdr, omega_farthest_fr = synonymous_mutation_ratio_per_seq_calc_cdr_fr_sections(max_germline_alignment,max_sequence_alignment,max_cdr3_length)
-    print('omega farthest cdr = ', omega_farthest_cdr)
-    print('omega farthest fr = ', omega_farthest_fr)
     min_sequence_alignment, min_germline_alignment, min_cdr3_length = airr_table_info_extraction(min_distance_seq_name, df_immune_db)
     omega_closest_cdr, omega_closest_fr = synonymous_mutation_ratio_per_seq_calc_cdr_fr_sections(min_germline_alignment,min_sequence_alignment,min_cdr3_length)
-    print('omega closest cdr = ', omega_closest_cdr)
-    print('omega closest fr = ', omega_closest_fr)
-################################################################################
-   #Print Results:
-    #print("---------Tree Analyzer Results---------")
-    #print("Number of Leafs = ",count_leafs)
-    #print("Max Mutations Distance Any Sequence ID is ",max_distance_seq_name)
-    #print("Max Mutations Distance Any Sequence from Germline is ",max_distance_mutations)
-    #print("Min Mutations Distance Any Sequence ID is ",min_distance_seq_name)
-    #print("Min Mutations Distance Any Sequence from Germline is ",min_distance_mutations)
-    #print("Max Mutations Distance BTW leaves is seqA ID ",max_distance_seq_name_leafs_a, " seqB ID ",max_distance_seq_name_leafs_b)
-    #print("Max Mutations Distance BTW leaves is ",max_distance_mutations_leafs)
-    #print("Min Mutations Distance BTW leaves is seqA ID ",min_distance_seq_name_leafs_a, " seqB ID ",min_distance_seq_name_leafs_b)
-    #print("Min Mutations Distance BTW leaves is ",min_distance_mutations_leafs)
-    #print("Number of synonymous mutations is ",count_synonymous)
-    #print("Number of not synonymous mutations is ",count_not_synonymous)
-    #print("Max Number of synonymous mutations in sequence is ",max_synonymous_mutations_in_sequence)
-    #print("Farthest sequence omega ratio is ", omega_farthest)
-    #print("Closest sequence omega ratio is ", omega_closest)
 ################################################################################
     #Insert results to list
     results = {
